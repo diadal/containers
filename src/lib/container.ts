@@ -77,6 +77,14 @@ const isRuntimeSignalledError = (error: unknown): boolean =>
 const isNotListeningError = (error: unknown): boolean => isErrorOfType(error, NOT_LISTENING_ERROR);
 const isContainerExitNonZeroError = (error: unknown): boolean =>
   isErrorOfType(error, UNEXPECTED_EXIT_ERROR);
+const isContainerNotRunningError = (error: unknown): boolean => {
+  const patterns = [
+    'the container is not running',
+    'not expected to be running',
+    'consider calling start()',
+  ];
+  return patterns.some(pattern => isErrorOfType(error, pattern));
+};
 
 function getExitCodeFromError(error: unknown): number | null {
   if (!(error instanceof Error)) {
@@ -719,6 +727,25 @@ export class Container<Env = unknown> extends DurableObject<Env> {
     } catch (e) {
       if (!(e instanceof Error)) {
         throw e;
+      }
+
+      // If container stopped during the request (e.g., sleepAfter expired), restart and retry
+      if (!this.container.running || isContainerNotRunningError(e)) {
+        try {
+          await this.startAndWaitForPorts(port);
+          return await tcpPort.fetch(containerUrl, request);
+        } catch (retryError) {
+          if (isNoInstanceError(retryError)) {
+            return new Response(
+              'There is no Container instance available at this time.\nThis is likely because you have reached your max concurrent instance count (set in wrangler config) or are you currently provisioning the Container.\nIf you are deploying your Container for the first time, check your dashboard to see provisioning status, this may take a few minutes.',
+              { status: 503 }
+            );
+          }
+          return new Response(
+            `Failed to restart container: ${retryError instanceof Error ? retryError.message : String(retryError)}`,
+            { status: 500 }
+          );
+        }
       }
 
       // This error means that the container might've just restarted
