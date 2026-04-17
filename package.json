@@ -47,12 +47,12 @@
     "@typescript-eslint/parser": "^8.31.1",
     "eslint": "^9.26.0",
     "jest": "^29.7.0",
-    "pkg-pr-new": "^0.0.62",
+    "pkg-pr-new": "^0.0.66",
     "prettier": "^3.5.3",
     "ts-jest": "^29.3.2",
     "tsup": "^8.0.2",
     "typescript": "latest",
-    "vitest": "^1.0.0"
+    "vitest": "^4.1.4"
   },
   "publishConfig": {
     "access": "public"
